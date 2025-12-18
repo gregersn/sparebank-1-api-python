@@ -8,11 +8,13 @@ import requests
 import secrets
 from urllib.parse import urlencode, urlparse, parse_qs
 
+
 from .config import Config
 from .accounts import AccountsAPI
 from .transactions import TransactionsAPI
 from .transfers import TransfersAPI
 from .child_accounts import ChildAccountsAPI
+from .server import wait_for_callback
 
 
 class Token(TypedDict):
@@ -95,7 +97,9 @@ class SpareBank1API:
 
         url = self.get_authorization_url()
         print(f"Go to the following URL to authorize: {url}")
-        redirect_response = input("Paste the full redirect URL here: ")
+        redirect_response = wait_for_callback(
+            urlparse(self.config.redirect_uri).port or 80
+        )["path"]
         self.fetch_token(redirect_response)
 
     def set_token(self, response: requests.Response):
