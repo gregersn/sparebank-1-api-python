@@ -1,12 +1,17 @@
 from datetime import date
+from typing import TYPE_CHECKING
+
 from .apierror import APIError
-from typing import Optional
+
+if TYPE_CHECKING:
+    from .client import SpareBank1API
 
 
 class TransfersAPI:
-    API_VERSION = "application/vnd.sparebank1.v1+json; charset=utf-8"
+    API_VERSION: str = "application/vnd.sparebank1.v1+json; charset=utf-8"
+    api: SpareBank1API
 
-    def __init__(self, api):
+    def __init__(self, api: SpareBank1API):
         self.api = api
 
     def transfer_to_credit_card(
@@ -14,8 +19,11 @@ class TransfersAPI:
         amount: float,
         from_account: str,
         credit_card_account_id: str,
-        due_date: date = date.today(),
+        due_date: date | None = None,
     ):
+        if due_date is None:
+            due_date = date.today()
+
         response = self.api.postApi(
             "transfer/creditcard/transferTo",
             json={
@@ -36,10 +44,12 @@ class TransfersAPI:
         from_account: str,
         to_account: str,
         currency_code: str = "NOK",
-        due_date: date = date.today(),
-        message: Optional[str] = None,
+        due_date: date | None = None,
+        message: str | None = None,
     ):
-        url = f"{self.api.API_URL}/"
+        if due_date is None:
+            due_date = date.today()
+
         data = {
             "amount": str(amount),
             "fromAccount": from_account,
@@ -63,8 +73,11 @@ class TransfersAPI:
         amount: float,
         from_account: str,
         policy_number: str,
-        due_date: date = date.today(),
+        due_date: date | None = None,
     ):
+        if due_date is None:
+            due_date = date.today()
+
         response = self.api.postApi(
             "transfer/pension",
             json={

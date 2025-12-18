@@ -1,39 +1,58 @@
 from datetime import datetime
-from email import header
 from genericpath import exists
 import io
 import json
 from time import time
+from typing import Any, TypedDict, cast
+import requests
+import secrets
+from urllib.parse import urlencode, urlparse, parse_qs
+
 from .config import Config
 from .accounts import AccountsAPI
 from .transactions import TransactionsAPI
 from .transfers import TransfersAPI
 from .child_accounts import ChildAccountsAPI
-from typing import Dict, Any
-import requests
-import secrets
-from urllib.parse import urlencode, urlparse, parse_qs
-from .config import Config
+
+
+class Token(TypedDict):
+    access_token: str
+    expires_at: int
+    refresh_token: str
+
+
+class ResponseToken(TypedDict):
+    access_token: str
+    expires_in: int
+    refresh_token: str
 
 
 class SpareBank1API:
-    BASE_URL = f"https://api.sparebank1.no"
-    AUTH_URL = f"{BASE_URL}/oauth/authorize"
-    TOKEN_URL = f"{BASE_URL}/oauth/token"
-    API_URL = f"{BASE_URL}/personal/banking"
+    BASE_URL: str = "https://api.sparebank1.no"
+    AUTH_URL: str = f"{BASE_URL}/oauth/authorize"
+    TOKEN_URL: str = f"{BASE_URL}/oauth/token"
+    API_URL: str = f"{BASE_URL}/personal/banking"
+    config: Config
+    _last_state: str | None
+    accounts: AccountsAPI
+    transactions: TransactionsAPI
+    transfers: TransfersAPI
+    child_accounts: ChildAccountsAPI
+
+    token: Token | None = None
 
     def __init__(self, config: Config):
         self.config = config
-        self.token: Dict[str, Any] = {}
         self._last_state = None
         self.accounts = AccountsAPI(self)
         self.transactions = TransactionsAPI(self)
         self.transfers = TransfersAPI(self)
         self.child_accounts = ChildAccountsAPI(self)
 
-    def build_headers(self, additional_headers: Dict[str, str]) -> Dict[str, str]:
+    def build_headers(self, additional_headers: dict[str, str]) -> dict[str, str]:
         if not self.ensure_token():
             raise
+        assert self.token
         headers = {
             "Authorization": f"Bearer {self.token['access_token']}",
             "User-Agent": "SpareBank1API/1.0",
@@ -42,28 +61,36 @@ class SpareBank1API:
             headers.update(additional_headers)
         return headers
 
-    def get(self, url: str, **kwargs) -> requests.Response:
-        headers = self.build_headers(kwargs.pop("headers", {}))
-        return requests.get(url, headers=headers, **kwargs)
+    def get(
+        self, url: str, headers: dict[str, str] | None = None, **kwargs: Any
+    ) -> requests.Response:
+        if headers is None:
+            headers = {}
+        return requests.get(url, headers=self.build_headers(headers), **kwargs)
 
-    def post(self, url: str, **kwargs) -> requests.Response:
-        headers = self.build_headers(kwargs.pop("headers", {}))
-        return requests.post(url, headers=headers, **kwargs)
+    def post(
+        self, url: str, headers: dict[str, str] | None = None, **kwargs: Any
+    ) -> requests.Response:
+        if headers is None:
+            headers = {}
 
-    def getApi(self, url: str, **kwargs) -> requests.Response:
+        return requests.post(url, headers=self.build_headers(headers), **kwargs)
+
+    def getApi(self, url: str, **kwargs: Any) -> requests.Response:
         return self.get(f"{self.API_URL}/{url}", **kwargs)
 
-    def postApi(self, url: str, **kwargs) -> requests.Response:
+    def postApi(self, url: str, **kwargs: Any) -> requests.Response:
         return self.post(f"{self.API_URL}/{url}", **kwargs)
 
     def authenticate(self):
         if exists("token.json"):
             with io.open("token.json", "r", encoding="utf-8") as f:
                 self.token = json.load(f)
+                assert self.token
                 print(
                     f"Imported token, valid until {datetime.fromtimestamp(self.token['expires_at'])}"
                 )
-                self.ensure_token()
+                _ = self.ensure_token()
                 return
 
         url = self.get_authorization_url()
@@ -72,7 +99,7 @@ class SpareBank1API:
         self.fetch_token(redirect_response)
 
     def set_token(self, response: requests.Response):
-        token = response.json()
+        token = cast(ResponseToken, response.json())
         expiry = response.headers.get("date")
         expires_at = (
             datetime.strptime(expiry, "%a, %d %b %Y %H:%M:%S GMT")
@@ -84,11 +111,12 @@ class SpareBank1API:
             "expires_at": int(token.get("expires_in", 0)) + int(expires_at.timestamp()),
             "refresh_token": token.get("refresh_token"),
         }
+
         print(
             f"New token, valid until {datetime.fromtimestamp(self.token['expires_at'])}"
         )
         with io.open("token.json", "w", encoding="utf-8") as f:
-            f.write(
+            _ = f.write(
                 json.dumps(
                     self.token,
                 )
@@ -131,6 +159,7 @@ class SpareBank1API:
         self.set_token(response)
 
     def refresh_token(self):
+        assert self.token
         response = requests.post(
             self.TOKEN_URL,
             data={
@@ -143,7 +172,7 @@ class SpareBank1API:
         response.raise_for_status()
         self.set_token(response)
 
-    def ensure_token(self, refresh_threshold=60) -> bool:
+    def ensure_token(self, refresh_threshold: int = 60) -> bool:
         """Check if the current token is valid."""
         if (
             not self.token

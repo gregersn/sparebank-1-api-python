@@ -3,7 +3,9 @@ import os
 
 
 class Config:
-    def __init__(self, config_path="config.ini"):
+    config: configparser.ConfigParser
+
+    def __init__(self, config_path: str = "config.ini"):
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 

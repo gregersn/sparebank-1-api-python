@@ -1,22 +1,26 @@
 from datetime import date
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 from .apierror import APIError
+
+if TYPE_CHECKING:
+    from .client import SpareBank1API
 
 
 class TransactionsAPI:
-    API_VERSION = "application/vnd.sparebank1.v1+json; charset=utf-8"
+    API_VERSION: str = "application/vnd.sparebank1.v1+json; charset=utf-8"
+    api: SpareBank1API
 
-    def __init__(self, api):
+    def __init__(self, api: SpareBank1API):
         self.api = api
 
     def list_transactions(
         self,
         account_keys: list[str],
-        from_date: Optional[date] = None,
-        to_date: Optional[date] = None,
-        row_limit: Optional[int] = None,
-        transaction_source: Optional[list[Literal["RECENT", "HISTORIC", "ALL"]]] = None,
-        enrich_with_payment_details: Optional[bool] = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        row_limit: int | None = None,
+        transaction_source: list[Literal["RECENT", "HISTORIC", "ALL"]] | None = None,
+        enrich_with_payment_details: bool | None = None,
     ):
         """GET /transactions - List transactions entities"""
         if account_keys is str:
@@ -41,7 +45,9 @@ class TransactionsAPI:
             raise APIError(response.status_code, response.text)
         return response.json()
 
-    def export_transactions_to_csv(self, account_key, from_date, to_date):
+    def export_transactions_to_csv(
+        self, account_key: str, from_date: date, to_date: date
+    ):
         """GET /transactions/export - Exports booked transactions to CSV for a given period"""
         response = self.api.getApi(
             "transactions/export",
@@ -59,12 +65,12 @@ class TransactionsAPI:
     def list_classified_transactions(
         self,
         account_keys: list[str],
-        from_date: Optional[date] = None,
-        to_date: Optional[date] = None,
-        row_limit: Optional[int] = None,
-        transaction_source: Optional[list[Literal["RECENT", "HISTORIC", "ALL"]]] = None,
-        enrich_with_payment_details: Optional[bool] = None,
-        enrich_with_merchant_logo: Optional[bool] = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        row_limit: int | None = None,
+        transaction_source: list[Literal["RECENT", "HISTORIC", "ALL"]] | None = None,
+        enrich_with_payment_details: bool | None = None,
+        enrich_with_merchant_logo: bool | None = None,
     ):
         """GET /transactions/classified - List transactions entities with classification"""
         if account_keys is str:
@@ -95,7 +101,7 @@ class TransactionsAPI:
             raise APIError(response.status_code, response.text)
         return response.json()
 
-    def get_transaction_details(self, transaction_id):
+    def get_transaction_details(self, transaction_id: str):
         response = self.api.getApi(
             f"transactions/{transaction_id}/details",
             headers={"Accept": self.API_VERSION},
@@ -105,7 +111,7 @@ class TransactionsAPI:
         return response.json()
 
     def get_classified_transaction_details(
-        self, transaction_id, enrich_with_merchant_data=None
+        self, transaction_id: str, enrich_with_merchant_data: Any = None
     ):
         response = self.api.getApi(
             f"transactions/{transaction_id}/details/classified",
