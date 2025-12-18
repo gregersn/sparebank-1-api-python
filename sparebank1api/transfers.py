@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING
 from .apierror import APIError
 
 if TYPE_CHECKING:
-    from .client import SpareBank1API
+    from .client import BaseAPI
 
 
 class TransfersAPI:
     API_VERSION: str = "application/vnd.sparebank1.v1+json; charset=utf-8"
-    api: SpareBank1API
+    api: BaseAPI
 
-    def __init__(self, api: SpareBank1API):
+    def __init__(self, api: BaseAPI):
         self.api = api
 
     def transfer_to_credit_card(

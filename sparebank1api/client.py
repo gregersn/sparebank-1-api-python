@@ -8,12 +8,7 @@ import requests
 import secrets
 from urllib.parse import urlencode, urlparse, parse_qs
 
-
 from .config import Config
-from .accounts import AccountsAPI
-from .transactions import TransactionsAPI
-from .transfers import TransfersAPI
-from .child_accounts import ChildAccountsAPI
 from .server import wait_for_callback
 
 
@@ -29,27 +24,19 @@ class ResponseToken(TypedDict):
     refresh_token: str
 
 
-class SpareBank1API:
+class BaseAPI:
     BASE_URL: str = "https://api.sparebank1.no"
     AUTH_URL: str = f"{BASE_URL}/oauth/authorize"
     TOKEN_URL: str = f"{BASE_URL}/oauth/token"
     API_URL: str = f"{BASE_URL}/personal/banking"
     config: Config
     _last_state: str | None
-    accounts: AccountsAPI
-    transactions: TransactionsAPI
-    transfers: TransfersAPI
-    child_accounts: ChildAccountsAPI
 
     token: Token | None = None
 
     def __init__(self, config: Config):
         self.config = config
         self._last_state = None
-        self.accounts = AccountsAPI(self)
-        self.transactions = TransactionsAPI(self)
-        self.transfers = TransfersAPI(self)
-        self.child_accounts = ChildAccountsAPI(self)
 
     def build_headers(self, additional_headers: dict[str, str]) -> dict[str, str]:
         if not self.ensure_token():

@@ -1,6 +1,6 @@
 import json
 from sparebank1api.config import Config
-from sparebank1api.client import SpareBank1API
+from sparebank1api.api import SpareBank1API
 
 
 def main():

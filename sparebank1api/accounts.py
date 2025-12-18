@@ -4,15 +4,15 @@ from .apierror import (
 )
 
 if TYPE_CHECKING:
-    from .client import SpareBank1API
+    from .client import BaseAPI
 
 
 class AccountsAPI:
     API_VERSION = "application/vnd.sparebank1.v5+json; charset=utf-8"
-    api: SpareBank1API
+    api: BaseAPI
 
     def __init__(
-        self, api: SpareBank1API
+        self, api: BaseAPI
     ):  # Remove type hint to avoid circular import at runtime
         self.api = api
 
